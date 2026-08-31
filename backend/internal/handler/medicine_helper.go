@@ -1,32 +1,92 @@
 package handler
 
 import (
-	"go-pharma/internal/model"
+	"context"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pramusinto/go-pharma/backend/internal/model"
+	"github.com/pramusinto/go-pharma/backend/internal/repository"
 )
 
-var medicines = []model.Medicine{
-	{Id: 1, Name: "Paracetamol 500 mg", Category: "Analgesik", Stock: 120, Unit: "tablet", Price: 500},
-	{Id: 2, Name: "Amoxicillin 500mg", Category: "Antibiotik", Stock: 45, Unit: "tablet", Price: 1500},
-	{Id: 3, Name: "Betadine 60ml", Category: "Antiseptik", Stock: 30, Unit: "botol", Price: 12000},
+type MedicineHandler struct {
+	repo *repository.MedicineRepository
 }
 
-func GetMedicine(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"data": medicines,
-	})
+func NewMedicineHandler(repo *repository.MedicineRepository) *MedicineHandler {
+	return &MedicineHandler{repo: repo}
 }
 
-func CreateMedicine(c *gin.Context) {
-	var newMedicine model.Medicine
-	if err := c.ShouldBindJSON(&newMedicine); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+func (h *MedicineHandler) GetMedicines(c *gin.Context) {
+	search := c.Query("search") // ?search=paracetamol
+
+	medicines, err := h.repo.GetAll(context.Background(), search)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
 	}
 
-	newMedicine.Id = len(medicines) + 1
-	medicines = append(medicines, newMedicine)
+	c.JSON(http.StatusOK, gin.H{"data": medicines})
+}
 
-	c.JSON(http.StatusCreated, gin.H{"data": newMedicine})
+func (h *MedicineHandler) CreateMedicine(c *gin.Context) {
+	var m model.Medicine
+	if err := c.ShouldBindJSON(&m); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.repo.Create(context.Background(), &m); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"data": m})
+}
+
+func (h *MedicineHandler) UpdateMedicine(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	var m model.Medicine
+	if err := c.ShouldBindJSON(&m); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := h.repo.Update(context.Background(), id, &m); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "medicine not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	m.ID = id
+	c.JSON(http.StatusOK, gin.H{"data": m})
+}
+
+func (h *MedicineHandler) DeleteMedicine(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	if err := h.repo.Delete(context.Background(), id); err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "medicine not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
