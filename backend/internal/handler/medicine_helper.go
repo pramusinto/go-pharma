@@ -6,9 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
+	"go-pharma/internal/model"
+	"go-pharma/internal/repository"
+
 	"github.com/gin-gonic/gin"
-	"github.com/pramusinto/go-pharma/backend/internal/model"
-	"github.com/pramusinto/go-pharma/backend/internal/repository"
 )
 
 type MedicineHandler struct {
@@ -68,7 +69,7 @@ func (h *MedicineHandler) UpdateMedicine(c *gin.Context) {
 		return
 	}
 
-	m.ID = id
+	m.Id = id
 	c.JSON(http.StatusOK, gin.H{"data": m})
 }
 

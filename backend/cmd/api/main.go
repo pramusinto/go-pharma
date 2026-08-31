@@ -1,13 +1,13 @@
 package main
 
 import (
+	"go-pharma/internal/config"
+	"go-pharma/internal/handler"
+	"go-pharma/internal/repository"
 	"log"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/pramusinto/go-pharma/backend/internal/config"
-	"github.com/pramusinto/go-pharma/backend/internal/handler"
-	"github.com/pramusinto/go-pharma/backend/internal/repository"
 )
 
 func main() {
